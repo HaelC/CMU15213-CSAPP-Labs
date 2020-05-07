@@ -53,9 +53,9 @@ Now the corresponding C code is straight-forward, if we don't consider the detai
 
 ```c
 void phase_1(char* input) {
-		char* correct = "Border relations with Canada have never been better.";
-  	if (string_not_equal(input, correct)) {
-      	explode_bomb();
+    char* correct = "Border relations with Canada have never been better.";
+    if (string_not_equal(input, correct)) {
+        explode_bomb();
     }
 }
 ```
@@ -120,10 +120,10 @@ The simplified logic of C code is something like this:
 
 ```c
 void phase_2(char* input) {
-		int numbers[6];
+    int numbers[6];
     read_six_numbers(input, numbers);
-		if (numbers[0] != 1) {
-      	explode_bomb();
+    if (numbers[0] != 1) {
+        explode_bomb();
     }
     for (int i = 0; i < 5; i++) {
         if (numbers[i + 1] != 2 * numbers[i]) {
