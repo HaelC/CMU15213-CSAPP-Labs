@@ -336,5 +336,83 @@ int func4(int a1, int a2, int a3) {
 
 `func4` is a weird function with some arithmetic operations. Fortunately, when calling `func4` in `phase_4`, we have known two arguments and we want the return value to be `0`. We can find something interesting between two comparisons `a4 <= a1` and `a4 >= a1`. When `a4 == a1`, we can return `0`, which is exactly what we want. With given parameters `a2=0,a3=14`, we can get `a4=7`.  So we can figure out that `7 0` is a valid input for phase 4. 
 
+## Phase 5
+
+```assembly
+Dump of assembler code for function phase_5:
+   0x0000000000401062 <+0>:     push   %rbx
+   0x0000000000401063 <+1>:     sub    $0x20,%rsp
+   0x0000000000401067 <+5>:     mov    %rdi,%rbx
+   0x000000000040106a <+8>:     mov    %fs:0x28,%rax
+   0x0000000000401073 <+17>:    mov    %rax,0x18(%rsp)
+   0x0000000000401078 <+22>:    xor    %eax,%eax
+   0x000000000040107a <+24>:    callq  0x40131b <string_length>
+   0x000000000040107f <+29>:    cmp    $0x6,%eax
+   0x0000000000401082 <+32>:    je     0x4010d2 <phase_5+112>
+   0x0000000000401084 <+34>:    callq  0x40143a <explode_bomb>
+   0x0000000000401089 <+39>:    jmp    0x4010d2 <phase_5+112>
+   0x000000000040108b <+41>:    movzbl (%rbx,%rax,1),%ecx
+   0x000000000040108f <+45>:    mov    %cl,(%rsp)
+   0x0000000000401092 <+48>:    mov    (%rsp),%rdx
+   0x0000000000401096 <+52>:    and    $0xf,%edx
+   0x0000000000401099 <+55>:    movzbl 0x4024b0(%rdx),%edx
+   0x00000000004010a0 <+62>:    mov    %dl,0x10(%rsp,%rax,1)
+   0x00000000004010a4 <+66>:    add    $0x1,%rax
+   0x00000000004010a8 <+70>:    cmp    $0x6,%rax
+   0x00000000004010ac <+74>:    jne    0x40108b <phase_5+41>
+   0x00000000004010ae <+76>:    movb   $0x0,0x16(%rsp)
+   0x00000000004010b3 <+81>:    mov    $0x40245e,%esi
+   0x00000000004010b8 <+86>:    lea    0x10(%rsp),%rdi
+   0x00000000004010bd <+91>:    callq  0x401338 <strings_not_equal>
+   0x00000000004010c2 <+96>:    test   %eax,%eax
+   0x00000000004010c4 <+98>:    je     0x4010d9 <phase_5+119>
+   0x00000000004010c6 <+100>:   callq  0x40143a <explode_bomb>
+   0x00000000004010cb <+105>:   nopl   0x0(%rax,%rax,1)
+   0x00000000004010d0 <+110>:   jmp    0x4010d9 <phase_5+119>
+   0x00000000004010d2 <+112>:   mov    $0x0,%eax
+   0x00000000004010d7 <+117>:   jmp    0x40108b <phase_5+41>
+   0x00000000004010d9 <+119>:   mov    0x18(%rsp),%rax
+   0x00000000004010de <+124>:   xor    %fs:0x28,%rax
+   0x00000000004010e7 <+133>:   je     0x4010ee <phase_5+140>
+   0x00000000004010e9 <+135>:   callq  0x400b30 <__stack_chk_fail@plt>
+   0x00000000004010ee <+140>:   add    $0x20,%rsp
+   0x00000000004010f2 <+144>:   pop    %rbx
+   0x00000000004010f3 <+145>:   retq   
+```
 
 
+
+```c
+void phase_5(char* input) {
+    if (string_length(input) != 6) {
+        explode_bomb();
+    }
+
+    char* dict = "maduiersnfotvbyl";
+    char* preset = "flyers";
+    char transformed[6];
+
+    for (int i = 0; i < 6; i++) {
+        char c = input[i];
+        transformed[i] = c & 0xf;
+    }
+
+    if (strings_not_equal(transformed, preset)) {
+        explode_bomb();
+    }
+}
+```
+
+
+
+In phase 5, we make some transformations to the input string by looking up at the given dictionary (stored at address `0x4024b0`, and compare the transformed string to another string (`flyers`, stored at address `0x40245e`).  
+
+For convenience, here is the transformation dictionary for 26 lower-cased letters:
+
+```
+original:    abcdefghijklmnopqrstuvwxyz
+             --------------------------
+transformed: aduiersnfotvbylmaduiersnfo
+```
+
+The target string is `flyers`, we just need to pick up corresponding letters from the dictionary. E.g.,`ionefg`is a valid input.
