@@ -1,6 +1,6 @@
 # Bomb Lab
 ## Introduction
-In this lab we will use *gdb* to to execute, debug and analyze the assembly code. With *gdb* we can add break points and execute the assembly code step by step, just as we normally do with an IDE. And we can also check the values of registers, addresses, etc. However, most of us might not have experience with *gdb* before. I found CMU's recitation for bomb lab (I referred to [17 fall](http://www.cs.cmu.edu/afs/cs/academic/class/15213-f17/www/recitations/recitation03-bomblab.pdf), or you can view the [latest](https://www.cs.cmu.edu/~213/recitations/recitation04-bomblab.pdf) as well) pretty useful. Besides, [two-page x86-64 GDB cheat sheet](http://csapp.cs.cmu.edu/3e/docs/gdbnotes-x86-64.pdf) is also helpful.  
+In this lab we will use *gdb* to to execute, debug and analyze the assembly code. With gdb we can add break points and execute the assembly code step by step, just as we normally do with an IDE. And we can also check the values of registers, addresses, etc. However, most of us might not have experience with *gdb* before. I found CMU's recitation for bomb lab (I referred to [17 fall](http://www.cs.cmu.edu/afs/cs/academic/class/15213-f17/www/recitations/recitation03-bomblab.pdf), or you can view the [latest](https://www.cs.cmu.edu/~213/recitations/recitation04-bomblab.pdf) as well) pretty useful. Besides, [two-page x86-64 GDB cheat sheet](http://csapp.cs.cmu.edu/3e/docs/gdbnotes-x86-64.pdf) is also helpful.  
 
 Here are some gdb commands that I used a lot in this lab:
 - `gdb <file>`
@@ -415,7 +415,7 @@ original:    abcdefghijklmnopqrstuvwxyz
 transformed: aduiersnfotvbylmaduiersnfo
 ```
 
-The target string is `flyers`, we just need to pick up corresponding letters from the dictionary. E.g.,`ionefg`is a valid input.
+The target string is `flyers`, we just need to pick up corresponding letters from the dictionary. E.g.,`ionefg` is a valid input.
 
 ## Phase 6
 
@@ -494,6 +494,7 @@ Dump of assembler code for function phase_6:
    0x00000000004011cb <+215>:   je     0x4011d2 <phase_6+222>
    0x00000000004011cd <+217>:   mov    %rdx,%rcx
    0x00000000004011d0 <+220>:   jmp    0x4011bd <phase_6+201>
+   
    0x00000000004011d2 <+222>:   movq   $0x0,0x8(%rdx)
    0x00000000004011da <+230>:   mov    $0x5,%ebp
    0x00000000004011df <+235>:   mov    0x8(%rbx),%rax
@@ -504,6 +505,7 @@ Dump of assembler code for function phase_6:
    0x00000000004011ee <+250>:   mov    0x8(%rbx),%rbx
    0x00000000004011f2 <+254>:   sub    $0x1,%ebp
    0x00000000004011f5 <+257>:   jne    0x4011df <phase_6+235>
+   
    0x00000000004011f7 <+259>:   add    $0x50,%rsp
    0x00000000004011fb <+263>:   pop    %rbx
    0x00000000004011fc <+264>:   pop    %rbp
@@ -519,9 +521,12 @@ Dump of assembler code for function phase_6:
 ```c
 void phase_6(char* input) {
     int numbers[6];
+    int nodes[6] = {332, 168, 924, 691, 477, 443};
+    int ordered[6];
     int* r13 = numbers;
     read_six_numbers(input, numbers);
     
+    // numbers: [4, 3, 2, 1, 6, 5]
     for (int i = 0; i < 6; i++) {
         if (numbers[i] > 6) {
             explode_bomb();
@@ -533,9 +538,26 @@ void phase_6(char* input) {
         }
     }
     
+    // numbers: [3, 4, 5, 6, 1, 2]
     for (int i = 0; i < 6; i++) {
         numbers[i] = 7 - numbers[i];
+    }
+  
+    // ordered: [924, 691, 477, 443, 332, 168]
+    for (int i = 0; i < 6; i++) {
+        ordered[i] = nodes[numbers[i]];
+    }
+  
+    for (int i = 0; i < 5; i--) {
+        if (ordered[i] < ordered[i+1]) {
+            explode_bomb();
+        }
     }
 }
 ```
 
+Finally, we get to the last phase and it is the hardest one. It has nealy a hundred lines of code and is related to many loops and arrays. I add some blank lines to the assembly code to make it more clear to read. The corresponding C code is based on my own understanding (in fact, there's some detail that I am confused with as well).  
+
+The first half is easier to understand. We utlize the `read_six_numbers` procedure and read in six numbers. After that, we make a nested loop to check the input values to make sure that those six numbers are less than or equal to 6 and distinct, which means the six numbers are `1, 2, 3, 4, 5, 6`'s permutation. Furthermore, we recalculate the value by subtracting from 7, which reverses the order of the array.  
+
+As for the second half, we need to figure out that six numbers have been pre-stored at the address starting from `0x6032d0`. Those are the elements of our target array. Since the second half code is intricate and elusive, I'd suggest looking into the last section of code first because it is easier to understand and it helps us to understand the logic.  By checking the last section of code we know that the array should be descending ordered. So  we could get the desired input: `4 3 2 1 6 5`.
