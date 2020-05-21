@@ -1,8 +1,10 @@
-# Attack Lab
+# Attack Lab 
 
 ## Part I: Code Injection Attacks
 
-### Level 1
+### Intro
+
+The following is the assembly code for `getbuf()`:
 
 ```assembly
 Dump of assembler code for function getbuf:
@@ -12,49 +14,75 @@ Dump of assembler code for function getbuf:
    0x00000000004017b4 <+12>:	mov    $0x1,%eax
    0x00000000004017b9 <+17>:	add    $0x28,%rsp
    0x00000000004017bd <+21>:	retq
-
-Dump of assembler code for function touch1:
-   0x00000000004017c0 <+0>:	  sub    $0x8,%rsp
-   0x00000000004017c4 <+4>:	  movl   $0x1,0x202d0e(%rip)        # 0x6044dc <vlevel>
-   0x00000000004017ce <+14>:	mov    $0x4030c5,%edi
-   0x00000000004017d3 <+19>:	callq  0x400cc0 <puts@plt>
-   0x00000000004017d8 <+24>:	mov    $0x1,%edi
-   0x00000000004017dd <+29>:	callq  0x401c8d <validate>
-   0x00000000004017e2 <+34>:	mov    $0x0,%edi
-   0x00000000004017e7 <+39>:	callq  0x400e40 <exit@plt>
-
 ```
 
-Our first target is to change the return address of `getbuf`. To accomplish that, we need to know two pieces of information: the stack architecture of `getbuf`, and the address of `touch1`.  
 
 
+![](./figures/0.jpg)
 
-`./hex2raw < touch1.txt | ./ctarget -q`
+Here I use orange color to indicate the return address, and blue to show the exploit code part. Colorless means that part is meaningless.
+
+![](./figures/1.jpg)
+
+As is shown in figure 1, the target of this lab is to modify the return address in `getbuf()`, so that the program would not return to `test()` normally. Figure 1.(a) and 1.(b) apply to all the levels in Part I. So we will mainly focus on what it looks after executing `getbuf()` and get ready to return.
+
+### Level 1
+
+```assembly
+Dump of assembler code for function touch1:
+   0x00000000004017c0 <+0>:	  sub    $0x8,%rsp
+```
+
+Our first mission is just changing the return address of `getbuf`. To accomplish that, we need to know the beginning address of touch1, which is `0x4017c0`. The stack diagram looks like follows:
+
+![](./figures/2.jpg)
+
+The first 40 hex values in our input does not matter. We just need to ensure the 41st - 43rd values represent the correct address. As a result of little-endian byte ordering, the address is encoded as `c0 17 40`. [touch1.txt](./touch1.txt) is a sample input.  
 
 ### Level 2
 
 ```assembly
 Dump of assembler code for function touch2:
    0x00000000004017ec <+0>:	  sub    $0x8,%rsp
-   0x00000000004017f0 <+4>:	  mov    %edi,%edx
-   0x00000000004017f2 <+6>:	  movl   $0x2,0x202ce0(%rip)        # 0x6044dc <vlevel>
-   0x00000000004017fc <+16>:	cmp    0x202ce2(%rip),%edi        # 0x6044e4 <cookie>
-   0x0000000000401802 <+22>:	jne    0x401824 <touch2+56>
-   0x0000000000401804 <+24>:	mov    $0x4030e8,%esi
-   0x0000000000401809 <+29>:	mov    $0x1,%edi
-   0x000000000040180e <+34>:	mov    $0x0,%eax
-   0x0000000000401813 <+39>:	callq  0x400df0 <__printf_chk@plt>
-   0x0000000000401818 <+44>:	mov    $0x2,%edi
-   0x000000000040181d <+49>:	callq  0x401c8d <validate>
-   0x0000000000401822 <+54>:	jmp    0x401842 <touch2+86>
-   0x0000000000401824 <+56>:	mov    $0x403110,%esi
-   0x0000000000401829 <+61>:	mov    $0x1,%edi
-   0x000000000040182e <+66>:	mov    $0x0,%eax
-   0x0000000000401833 <+71>:	callq  0x400df0 <__printf_chk@plt>
-   0x0000000000401838 <+76>:	mov    $0x2,%edi
-   0x000000000040183d <+81>:	callq  0x401d4f <fail>
-   0x0000000000401842 <+86>:	mov    $0x0,%edi
-   0x0000000000401847 <+91>:	callq  0x400e40 <exit@plt>
-
+   
+   # cookie: 0x59b997fa
 ```
 
+Unlike level 1 where we simply modify the return address, we need to execute some exploit code in level 2. We can directly use the allocated stack space to store the exploit code. The procedure involves two returns: when `getbuf()` returns, it will jump to the current stack space to execute some byte code. After that, the byte code contains another `ret` instruction and the program counter will be redirected to `touch2()`. So there are two return addresses here, one is within the stack space and another is `touch2()`'s address, just as shown in figure 3.a:
+
+![](./figures/3.jpg)
+
+In our exploit code, we need to assign value to `%rdi`. Besides that, don't forget to subtract `%rsp`. After the first `ret` instruction, `%rsp` will automatically add by 0x8. Assume that our second return address is stored at address `0x5561dc98` as figure 3 (b) shows, then we need to subtract `%rsp` by 0x10.  
+
+So we need the following byte code:
+
+```assembly
+   0:	48 83 ec 10          	sub    $0x10,%rsp
+   4:	bf fa 97 b9 59       	mov    $0x59b997fa,%edi
+   9:	c3                   	retq   
+```
+
+and the stack diagram is shown in figure 3 (c). [touch2.txt](./touch2.txt) is a samput input.
+
+### Level 3
+
+```assembly
+Dump of assembler code for function touch3:
+   0x00000000004018fa <+0>:	  push   %rbx
+```
+
+Level 3 is somewhat like level 2. The difference is switch from numerical value to a string. The string should be stored somewhere. As mentioned in the lab writeup, how can we protect the string from being overwritten by following functions (`hexmatch()` and `strnsmp()`)? One way is to store the string somewhere deep (e.g., `-0x100(%rsp)`) but it is somewhat complicated and the corresponding byte code would exceed the allocated stack space. Another way is just store the string above `%rsp`. More specifically, rsp2 as shown in figure 4 (a): 
+
+![](./figures/4.jpg)
+
+As the function get executed, `%rsp` just goes lower and lower. So the higher stack will be safe (as long as `hexmatch()` and `strnsmp()` don't contain code injection attacks).  
+
+The byte code is as follows:
+
+```assembly
+   0:	48 83 ec 30          	sub    $0x30,%rsp
+   4:	48 c7 c7 90 dc 61 55 	mov    $0x5561dc90,%rdi
+   b:	c3                   	retq   
+```
+
+the stack diagram is shown in figure 4 (b). [touch3.txt](./touch3.txt) is a sample input.
