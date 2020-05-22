@@ -86,3 +86,27 @@ The byte code is as follows:
 ```
 
 the stack diagram is shown in figure 4 (b). [touch3.txt](./touch3.txt) is a sample input.
+
+## Part II: Return-Oriented Programming
+
+### Level 2
+
+In part II, since the stack positions differ from one run to another, we cannot set `rsp` to point to the our own exploit code. Instead, we need to find positions in the 'gadget farm'.  
+
+![](./figures/5.jpg)
+
+We can use `x/72bx` to get the byte code between `start_farm` and `mid_farm`. Fortunately, there is not much code, so we could find the gadgets easily. As shown in figure 5, there are two gadgets that could be useful: 
+
+```assembly
+58          popq %rax
+90          nop
+c3          ret
+
+48 89 c7    movq %rax,%rdi
+90          nop
+c3          ret
+```
+
+Therefore, we need to store three bytes at stack pointer: the address of the first gadget, the cookie data to be popped, and the address of the second gadget. Note that both `ret` and `popq` would increase `rsp`,  so we need to use the upward space. [rtouch2.txt] is a sample input and here is the stack diagram:  
+
+![](./figures/6.jpg)
