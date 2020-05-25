@@ -154,9 +154,11 @@ Some useful instructions are as follows:
           retq
 ```
 
-By looking at *farm.c*, we can find a `add_xy()` function after `mid_farm()`. It plays a critical role to calculate the address of our cookie string. 
+By looking at *farm.c*, we can find a `add_xy()` function after `mid_farm()`. It plays a critical role to calculate the address of our cookie string. According to phase 3 in Part I, we know that we need to store the string somewher above `rsp` when returning to `touch3()`.  
 
-The procedure is as follows:
+![](./figures/8.jpg)
+
+The stack diagram is shown as above and the procedure is as follows:
 
 ```assembly
 # set the base pointer to %rdi
