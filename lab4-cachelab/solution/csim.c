@@ -163,12 +163,12 @@ void freeCache() {
 
 int cacheHit(unsigned long tag, int set_index) {
     for (int line = 0; line < E; line++) {
-        struct cache_line* cl = cache + set_index + line;
+        struct cache_line* cl = cache + set_index * E + line;
         if (cl->valid && cl->tag == tag) {
             cl->lru_counter = 0;
             for (int update_line = 0; update_line < E; update_line++) {
-                if ((*(cache + set_index + update_line)).valid && update_line != line) {
-                    (cache + set_index + update_line)->lru_counter++;
+                if ((cache + set_index * E + update_line)->valid && update_line != line) {
+                    (cache + set_index * E + update_line)->lru_counter++;
                 }
             }
             return 1;
@@ -179,7 +179,7 @@ int cacheHit(unsigned long tag, int set_index) {
 
 int insertEmptyLine(unsigned long tag, int set_index) {
     for (int line = 0; line < E; line++) {
-        struct cache_line* cl = cache + set_index + line;
+        struct cache_line* cl = cache + set_index * E + line;
         if (!cl->valid) {
             cl->valid = true;
             cl->lru_counter = 0;
@@ -189,8 +189,8 @@ int insertEmptyLine(unsigned long tag, int set_index) {
               memcpy(cl.block, address, 1 << b);
             */
             for (int update_line = 0; update_line < E; update_line++) {
-                if ((*(cache + set_index + update_line)).valid && update_line != line) {
-                    (cache + set_index + update_line)->lru_counter++;
+                if ((cache + set_index * E + update_line)->valid && update_line != line) {
+                    (cache + set_index * E + update_line)->lru_counter++;
                 }
             }
             return 1;
@@ -201,7 +201,7 @@ int insertEmptyLine(unsigned long tag, int set_index) {
 
 void replaceLine(unsigned long tag, int set_index) {
     for (int line = 0; line < E; line++) {
-        struct cache_line* cl = cache + set_index + line;
+        struct cache_line* cl = cache + set_index * E + line;
         cl->lru_counter++;
         if (cl->lru_counter == E) {
             cl->lru_counter = 0;
