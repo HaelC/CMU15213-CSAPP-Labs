@@ -165,12 +165,13 @@ int cacheHit(unsigned long tag, int set_index) {
     for (int line = 0; line < E; line++) {
         struct cache_line* cl = cache + set_index * E + line;
         if (cl->valid && cl->tag == tag) {
-            cl->lru_counter = 0;
             for (int update_line = 0; update_line < E; update_line++) {
-                if ((cache + set_index * E + update_line)->valid && update_line != line) {
+                if ((cache + set_index * E + update_line)->valid 
+                 && (cache + set_index * E + update_line)->lru_counter < cl->lru_counter) {
                     (cache + set_index * E + update_line)->lru_counter++;
                 }
             }
+            cl->lru_counter = 0;
             return 1;
         }
     }
