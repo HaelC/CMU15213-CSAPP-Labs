@@ -3,7 +3,6 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdbool.h>
-// #include <math.h>
 #include "cachelab.h"
 
 struct cache_line {
@@ -60,8 +59,6 @@ Examples:\n\
                 b = atoi(optarg);
                 break;
             case 't':
-                // https://stackoverflow.com/questions/24333417/c-pass-by-reference-string
-                // sprintf(filename, optarg);
                 *filename = malloc(strlen(optarg) + 1);
                 if (!filename) {
                     exit(EXIT_FAILURE);
@@ -73,6 +70,7 @@ Examples:\n\
                 exit(EXIT_FAILURE);
         }
     }
+    // Make sure all arguments are given.
     if (s == 0 || E == 0 || b == 0 || *filename == NULL) {
         fprintf(stderr, "%s: %s%s", argv[0], MISSING, USAGE_INFO);
         exit(EXIT_FAILURE);
@@ -97,10 +95,12 @@ void openFile(char* filename) {
         }
         unsigned long tag = address >> (s + b);
         int set_index = (address >> b) & (~(~0 << s));
+        // In this lab, we don't need to worry about block_offset.
         // int block_offset = address & (~(~0 << b));
         if (verbose) {
             printf("%c %lx,%d", access_type, address, size);
         }
+        // Go through the cache to check whether there is a cache hit
         if (cacheHit(tag, set_index)) {
             hit_count++;
             if (verbose) {
@@ -112,7 +112,9 @@ void openFile(char* filename) {
             if (verbose) {
                 printf(" miss");
             }
+            // Go through the cache to see whether there is an empty line
             if (!insertEmptyLine(tag, set_index)) {
+                // No empty line in cache, so we need to evict the oldest line
                 eviction_count++;
                 replaceLine(tag, set_index);
                 if (verbose) {
@@ -129,8 +131,6 @@ void openFile(char* filename) {
         if (verbose) {
             printf("\n");
         }
-        // printf("%c %lx %d\n", access_type, address, size);
-        // printf("%ld %d %d\n\n", tag, set_index, block_offset);
     }
     fclose(pFile);
 }
@@ -146,7 +146,6 @@ void buildCache() {
             if ((cache + i * E + j)->block == NULL) {
                 exit(EXIT_FAILURE);
             }
-            // printf("%d %ld\n", (*(cache + i * E + j)).valid, sizeof((*(cache + i * E + j)).block));
         }
     }
 }
@@ -165,12 +164,14 @@ int cacheHit(unsigned long tag, int set_index) {
     for (int line = 0; line < E; line++) {
         struct cache_line* cl = cache + set_index * E + line;
         if (cl->valid && cl->tag == tag) {
+            // increment previous cache lines' lru_counters
             for (int update_line = 0; update_line < E; update_line++) {
                 if ((cache + set_index * E + update_line)->valid 
                  && (cache + set_index * E + update_line)->lru_counter < cl->lru_counter) {
                     (cache + set_index * E + update_line)->lru_counter++;
                 }
             }
+            // update its own lru_counter to the latest
             cl->lru_counter = 0;
             return 1;
         }
@@ -185,6 +186,7 @@ int insertEmptyLine(unsigned long tag, int set_index) {
             cl->valid = true;
             cl->lru_counter = 0;
             cl->tag = tag;
+            // We don't need to copy the memory to cache in this lab.
             /*
               char* address = (char*)((tag << (s + b)) | (set_index << b));
               memcpy(cl.block, address, 1 << b);
@@ -204,6 +206,8 @@ void replaceLine(unsigned long tag, int set_index) {
     for (int line = 0; line < E; line++) {
         struct cache_line* cl = cache + set_index * E + line;
         cl->lru_counter++;
+        // The lru_counter should be in range [0, E-1].
+        // If it reaches E, it means that it should be replaced.
         if (cl->lru_counter == E) {
             cl->lru_counter = 0;
             cl->tag = tag;
