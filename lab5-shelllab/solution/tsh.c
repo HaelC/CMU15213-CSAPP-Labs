@@ -111,7 +111,7 @@ int main(int argc, char **argv)
             emit_prompt = 0;  /* handy for automatic testing */
             break;
         default:
-                usage();
+            usage();
         }
     }
 
@@ -203,7 +203,7 @@ int parseline(const char *cmdline, char **argv)
         *delim = '\0';
         buf = delim + 1;
         while (*buf && (*buf == ' ')) /* ignore spaces */
-               buf++;
+            buf++;
 
         if (*buf == '\'') {
             buf++;
@@ -337,7 +337,7 @@ int addjob(struct job_t *jobs, pid_t pid, int state, char *cmdline)
             if (nextjid > MAXJOBS)
                 nextjid = 1;
             strcpy(jobs[i].cmdline, cmdline);
-              if(verbose){
+            if(verbose){
                 printf("Added job [%d] %d %s\n", jobs[i].jid, jobs[i].pid, jobs[i].cmdline);
             }
             return 1;
@@ -432,8 +432,8 @@ void listjobs(struct job_t *jobs)
                 case ST: 
                     printf("Stopped ");
                     break;
-            default:
-                    printf("listjobs: Internal error: job[%d].state=%d ", 
+                default:
+                    printf("listjobs: Internal error: job[%d].state=%d ",
                            i, jobs[i].state);
             }
             printf("%s", jobs[i].cmdline);
