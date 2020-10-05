@@ -168,7 +168,7 @@ void eval(char *cmdline)
     char *argv[MAXARGS]; /* Argument list execve() */
     char buf[MAXLINE];   /* Holds modified command line */
     int bg;              /* Should the job run in bg or fg? */
-    sigset_t mask_all, mask_one, prev_one;  /* Explicitly block signals */
+    sigset_t mask_all, prev_all, mask_one, prev_one;  /* Explicitly block signals */
     pid_t pid;           /* Process id */
 
     strcpy(buf, cmdline);
@@ -206,12 +206,15 @@ void eval(char *cmdline)
             if (waitpid(pid, &status, 0) < 0) {
                 unix_error("waitfg: waitpid error");
             }
+            sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
+            deletejob(jobs, pid);
+            sigprocmask(SIG_SETMASK, &prev_all, NULL);
         }
         else {
+            printf("[%d] (%d) %s", nextjid, pid, cmdline);
             sigprocmask(SIG_BLOCK, &mask_all, NULL);
             addjob(jobs, pid, BG, cmdline);
             sigprocmask(SIG_SETMASK, &prev_one, NULL);
-            printf("%d %s", pid, cmdline);
         }
     }
     return;
@@ -283,7 +286,11 @@ int builtin_cmd(char **argv)
     if (!strcmp(argv[0], "quit")) /* quit command */
         exit(0);
     else if (!strcmp(argv[0], "jobs")) {
-        printf("Jobs\n");
+        for (int i = 0; i < MAXJOBS; i++) {
+            if (jobs[i].state == FG || jobs[i].state == BG) {
+                printf("[%d] (%d) Running %s", jobs[i].jid, jobs[i].pid, jobs[i].cmdline);
+            }
+        }
         return 1;
     }
     else if (!strcmp(argv[0], "bg")) {
