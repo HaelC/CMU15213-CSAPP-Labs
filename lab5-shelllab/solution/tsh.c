@@ -168,6 +168,7 @@ void eval(char *cmdline)
     char *argv[MAXARGS]; /* Argument list execve() */
     char buf[MAXLINE];   /* Holds modified command line */
     int bg;              /* Should the job run in bg or fg? */
+    sigset_t mask_all, mask_one, prev_one;  /* Explicitly block signals */
     pid_t pid;           /* Process id */
 
     strcpy(buf, cmdline);
@@ -176,11 +177,20 @@ void eval(char *cmdline)
         return;   /* Ignore empty lines */
 
     if (!builtin_cmd(argv)) {
+        sigfillset(&mask_all);
+        sigemptyset(&mask_one);
+        sigaddset(&mask_one, SIGCHLD);
+        sigprocmask(SIG_BLOCK, &mask_one, &prev_one);  /* Block SIGCHLD */
         pid = fork();
         if (pid < 0) {
             unix_error("Fork error");
         }
         if (pid == 0) {   /* Child runs user job */
+            /* Unblock SIGCHLD */
+            sigprocmask(SIG_SETMASK, &prev_one, NULL);
+            /* Puts the child in a new process group whose group ID
+               is identical to the child's PID */
+            setpgid(0, 0);
             if (execve(argv[0], argv, environ) < 0) {
                 printf("%s: Command not found.\n", argv[0]);
                 exit(0);
@@ -190,11 +200,17 @@ void eval(char *cmdline)
         /* Parent waits for foreground job to terminate */
         if (!bg) {
             int status;
+            sigprocmask(SIG_BLOCK, &mask_all, NULL);
+            addjob(jobs, pid, FG, cmdline);
+            sigprocmask(SIG_SETMASK, &prev_one, NULL);
             if (waitpid(pid, &status, 0) < 0) {
                 unix_error("waitfg: waitpid error");
             }
         }
         else {
+            sigprocmask(SIG_BLOCK, &mask_all, NULL);
+            addjob(jobs, pid, BG, cmdline);
+            sigprocmask(SIG_SETMASK, &prev_one, NULL);
             printf("%d %s", pid, cmdline);
         }
     }
@@ -266,8 +282,18 @@ int builtin_cmd(char **argv)
 {
     if (!strcmp(argv[0], "quit")) /* quit command */
         exit(0);
-    if (!strcmp(argv[0], "&"))    /* Ignore singleton */
+    else if (!strcmp(argv[0], "jobs")) {
+        printf("Jobs\n");
         return 1;
+    }
+    else if (!strcmp(argv[0], "bg")) {
+        printf("Background\n");
+        return 1;
+    }
+    else if (!strcmp(argv[0], "fg")) {
+        printf("Foreground\n");
+        return 1;
+    }
     return 0;     /* not a builtin command */
 }
 
