@@ -320,6 +320,100 @@ void waitfg(pid_t pid)
     return;
 }
 
+/*************************
+ * Signal-safe I/O package
+ * Most of the code comes 
+ * from csapp.c at csapp
+ * book website
+ *************************/
+
+/* sio_reverse: reverse string s in place, from K&R implementation */
+void sio_reverse(char s[])
+{
+    int c, i, j;
+    
+    for (i = 0, j = strlen(s)-1; i < j; i++, j--) {
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
+ 
+/* sio_itoa: convert n to characters in s, from K&R implementation */
+void sio_itoa(int n, char s[])
+{
+    int i, sign;
+    
+    if ((sign = n) < 0) {  /* record sign */
+        n = -n;            /* make n positive */
+    }
+    i = 0;
+    do {       /* generate digits in reverse order */
+        s[i++] = n % 10 + '0';   /* get next digit */
+    } while ((n /= 10) > 0);     /* delete it */
+    if (sign < 0)
+        s[i++] = '-';
+    s[i] = '\0';
+    sio_reverse(s);
+}
+
+/* sio_strlen: get the length of string */
+size_t sio_strlen(char s[])
+{
+    int i = 0;
+    
+    while (s[i] != '\0')
+        ++i;
+    return i;
+}
+
+/* sio_puts: put string */
+ssize_t sio_puts(char s[])
+{
+    return write(STDOUT_FILENO, s, sio_strlen(s));
+}
+
+/* sit_putl: put long */
+ssize_t sio_putl(long v)
+{
+    char s[128];
+    
+    sio_itoa(v, s); /* Based on K&R itoa() */
+    return sio_puts(s);
+}
+
+/* sio_error: put error message and exit */
+void sio_error(char s[])
+{
+    sio_puts(s);
+    _exit(1);
+}
+
+/* Sio_puts: wrapper for sio_puts */
+ssize_t Sio_puts(char s[])
+{
+    ssize_t n;
+  
+    if ((n = sio_puts(s)) < 0)
+	sio_error("Sio_puts error");
+    return n;
+}
+
+/* Sio_putl: wrapper for sio_putl */
+ssize_t Sio_putl(long v)
+{
+    ssize_t n;
+  
+    if ((n = sio_putl(v)) < 0)
+	sio_error("Sio_putl error");
+    return n;
+}
+
+/*****************************
+ * End Signal-safe I/O package
+ *****************************/
+
 /*****************
  * Signal handlers
  *****************/
@@ -343,6 +437,20 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    for (int i = 0; i < MAXJOBS; i++) {
+        if (jobs[i].state == FG) {
+            pid_t pid = jobs[i].pid;
+            Sio_puts("Job [");
+            Sio_putl(jobs[i].jid);
+            Sio_puts("] (");
+            Sio_putl(pid);
+            Sio_puts(") terminated by signal ");
+            Sio_putl(sig);
+            Sio_puts("\n");
+            // printf("Job [%d] (%d) terminated by signal %d\n", jobs[i].jid, jobs[i].pid, sig);
+            kill(-pid, SIGINT);
+        }
+    }
     return;
 }
 
