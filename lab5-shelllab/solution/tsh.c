@@ -286,11 +286,12 @@ int builtin_cmd(char **argv)
     if (!strcmp(argv[0], "quit")) /* quit command */
         exit(0);
     else if (!strcmp(argv[0], "jobs")) {
-        for (int i = 0; i < MAXJOBS; i++) {
-            if (jobs[i].state == FG || jobs[i].state == BG) {
-                printf("[%d] (%d) Running %s", jobs[i].jid, jobs[i].pid, jobs[i].cmdline);
-            }
-        }
+        // for (int i = 0; i < MAXJOBS; i++) {
+        //     if (jobs[i].state == FG || jobs[i].state == BG) {
+        //         printf("[%d] (%d) Running %s", jobs[i].jid, jobs[i].pid, jobs[i].cmdline);
+        //     }
+        // }
+        listjobs(jobs);
         return 1;
     }
     else if (!strcmp(argv[0], "bg")) {
@@ -437,20 +438,21 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    for (int i = 0; i < MAXJOBS; i++) {
-        if (jobs[i].state == FG) {
-            pid_t pid = jobs[i].pid;
-            Sio_puts("Job [");
-            Sio_putl(jobs[i].jid);
-            Sio_puts("] (");
-            Sio_putl(pid);
-            Sio_puts(") terminated by signal ");
-            Sio_putl(sig);
-            Sio_puts("\n");
-            // printf("Job [%d] (%d) terminated by signal %d\n", jobs[i].jid, jobs[i].pid, sig);
-            kill(-pid, SIGINT);
-        }
-    }
+    pid_t pid = fgpid(jobs);
+    if (pid == 0)
+        return;
+    
+    Sio_puts("Job [");
+    Sio_putl(pid2jid(pid));
+    Sio_puts("] (");
+    Sio_putl(pid);
+    Sio_puts(") terminated by signal ");
+    Sio_putl(sig);
+    Sio_puts("\n");
+    // printf("Job [%d] (%d) terminated by signal %d\n", jobs[i].jid, jobs[i].pid, sig);
+    // deletejob(jobs, pid);
+    kill(-pid, SIGINT);
+ 
     return;
 }
 
@@ -461,6 +463,17 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    pid_t pid = fgpid(jobs);
+    Sio_puts("Job [");
+    Sio_putl(pid2jid(pid));
+    Sio_puts("] (");
+    Sio_putl(pid);
+    Sio_puts(") stopped by signal ");
+    Sio_putl(sig);
+    Sio_puts("\n");
+    kill(-pid, SIGTSTP);
+    getjobpid(jobs, pid)->state = ST;
+ 
     return;
 }
 
