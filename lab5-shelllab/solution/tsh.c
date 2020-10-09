@@ -294,14 +294,11 @@ int builtin_cmd(char **argv)
         listjobs(jobs);
         return 1;
     }
-    else if (!strcmp(argv[0], "bg")) {
-        printf("Background\n");
+    else if (!strcmp(argv[0], "bg") || !strcmp(argv[0], "fg")) {
+        do_bgfg(argv);
         return 1;
     }
-    else if (!strcmp(argv[0], "fg")) {
-        printf("Foreground\n");
-        return 1;
-    }
+    
     return 0;     /* not a builtin command */
 }
 
@@ -310,6 +307,26 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    int bg, jid;
+    pid_t pid;
+    if (!strcmp(argv[0], "bg"))
+        bg = 1;
+    else
+        bg = 0;
+    
+    if (argv[1][0] == '%')
+        jid = atoi(argv[1] + 1);
+    else
+        jid = pid2jid(atoi(argv[1]));
+    
+    if (bg) {
+        struct job_t* job = getjobjid(jobs, jid);
+        pid = job->pid;
+        job->state = BG;
+        printf("[%d] (%d) %s", jid, pid, job->cmdline);
+        kill(-pid, SIGCONT);
+    }
+    
     return;
 }
 
