@@ -309,6 +309,8 @@ void do_bgfg(char **argv)
 {
     int bg, jid;
     pid_t pid;
+    struct job_t* job;
+    
     if (!strcmp(argv[0], "bg"))
         bg = 1;
     else
@@ -318,13 +320,20 @@ void do_bgfg(char **argv)
         jid = atoi(argv[1] + 1);
     else
         jid = pid2jid(atoi(argv[1]));
+        
+    job = getjobjid(jobs, jid);
+    pid = job->pid;
     
     if (bg) {
-        struct job_t* job = getjobjid(jobs, jid);
-        pid = job->pid;
         job->state = BG;
         printf("[%d] (%d) %s", jid, pid, job->cmdline);
         kill(-pid, SIGCONT);
+    }
+    else {
+        job->state = FG;
+        kill(-pid, SIGCONT);
+        gpid = 0;
+        waitfg(gpid);
     }
     
     return;
