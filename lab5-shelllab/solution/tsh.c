@@ -456,6 +456,19 @@ ssize_t Sio_putl(long v)
     return n;
 }
 
+void print_message(pid_t pid, int sig, char* state)
+{
+    Sio_puts("Job [");
+    Sio_putl(pid2jid(pid));
+    Sio_puts("] (");
+    Sio_putl(pid);
+    Sio_puts(") ");
+    Sio_puts(state);
+    Sio_puts(" by signal ");
+    Sio_putl(sig);
+    Sio_puts("\n");
+}
+
 /*****************************
  * End Signal-safe I/O package
  *****************************/
@@ -503,13 +516,7 @@ void sigint_handler(int sig)
     if (pid == 0)
         return;
     
-    Sio_puts("Job [");
-    Sio_putl(pid2jid(pid));
-    Sio_puts("] (");
-    Sio_putl(pid);
-    Sio_puts(") terminated by signal ");
-    Sio_putl(sig);
-    Sio_puts("\n");
+    print_message(pid, sig, "terminated");
     // printf("Job [%d] (%d) terminated by signal %d\n", jobs[i].jid, jobs[i].pid, sig);
     kill(-pid, SIGINT);
  
@@ -527,13 +534,7 @@ void sigtstp_handler(int sig)
     if (pid == 0)
         return;
     
-    Sio_puts("Job [");
-    Sio_putl(pid2jid(pid));
-    Sio_puts("] (");
-    Sio_putl(pid);
-    Sio_puts(") stopped by signal ");
-    Sio_putl(sig);
-    Sio_puts("\n");
+    print_message(pid, sig, "stopped");
     kill(-pid, SIGTSTP);
 
     return;
