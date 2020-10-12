@@ -315,13 +315,30 @@ void do_bgfg(char **argv)
         bg = 1;
     else
         bg = 0;
+    if (argv[1] == NULL) {
+        printf("%s command requires PID or %%jobid argument\n", argv[0]);
+        return;
+    }
     
     if (argv[1][0] == '%')
         jid = atoi(argv[1] + 1);
-    else
+    else if (!isdigit(argv[1][0])) {
+        printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+        return;
+    }
+    else {
         jid = pid2jid(atoi(argv[1]));
-        
+        if (!jid) {
+            printf("(%s): No such process\n", argv[1]);
+            return;
+        }
+    }
+    
     job = getjobjid(jobs, jid);
+    if (job == NULL) {
+        printf("%s: No such job\n", argv[1]);
+        return;
+    }
     pid = job->pid;
     
     if (bg) {
