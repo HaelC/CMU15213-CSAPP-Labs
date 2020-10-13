@@ -488,6 +488,7 @@ void sigchld_handler(int sig)
 {
     sigset_t mask_all, prev_all;
     int status;
+    int olderrno = errno;
     sigfillset(&mask_all);
     gpid = waitpid(-1, &status, WNOHANG | WUNTRACED);
     if (gpid) {
@@ -496,12 +497,14 @@ void sigchld_handler(int sig)
             getjobpid(jobs, gpid)->state = ST;
             sigprocmask(SIG_SETMASK, &prev_all, NULL);
         }
-        else {                     /* terminates */
+        else {  /* terminates */
             sigprocmask(SIG_BLOCK, &mask_all, &prev_all);
             deletejob(jobs, gpid);
             sigprocmask(SIG_SETMASK, &prev_all, NULL);
         }
     }
+    
+    errno = olderrno;
     return;
 }
 
@@ -513,13 +516,15 @@ void sigchld_handler(int sig)
 void sigint_handler(int sig) 
 {
     pid_t pid = fgpid(jobs);
+    int olderrno = errno;
     if (pid == 0)
         return;
     
     print_message(pid, sig, "terminated");
     // printf("Job [%d] (%d) terminated by signal %d\n", jobs[i].jid, jobs[i].pid, sig);
     kill(-pid, SIGINT);
- 
+    
+    errno = olderrno;
     return;
 }
 
@@ -531,12 +536,14 @@ void sigint_handler(int sig)
 void sigtstp_handler(int sig) 
 {
     pid_t pid = fgpid(jobs);
+    int olderrno = errno;
     if (pid == 0)
         return;
     
     print_message(pid, sig, "stopped");
     kill(-pid, SIGTSTP);
 
+    errno = olderrno;
     return;
 }
 
