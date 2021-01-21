@@ -217,9 +217,37 @@ static void *coalesce(void *bp)
 }
 
 
+void *find_fit(size_t asize)
+{
+    void *bp = heap_listp;
+    while (GET_SIZE(HDRP(bp)) > 0) {
+        if (GET_SIZE(HDRP(bp)) >= asize && !GET_ALLOC(HDRP(bp)))
+            return bp;
+        bp = NEXT_BLKP(bp);
+    }
+    /* Reaching the epilogue block and could find one fit */
+    return NULL;
+}
 
-
-
+void place(void *bp, size_t asize)
+{
+    size_t bsize = GET_SIZE(HDRP(bp));          /* original block size */
+    size_t remaining = bsize - asize;
+    /* The minimum block size is 16 bytes */
+    if (remaining >= 2*DSIZE) {
+        PUT(HDRP(bp), PACK(asize, 1));
+        PUT(FTRP(bp), PACK(asize, 1));
+        bp = NEXT_BLKP(bp);
+        PUT(HDRP(bp), PACK(remaining, 0));
+        PUT(FTRP(bp), PACK(remaining, 0));
+    }
+    /* The remaining size is not big enough, therefore no splitting,
+       just mark the entire block as allocated */
+    else {
+        PUT(HDRP(bp), PACK(bsize, 1));
+        PUT(FTRP(bp), PACK(bsize, 1));
+    }
+}
 
 
 
